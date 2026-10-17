@@ -104,10 +104,10 @@ varying float vSelEdge;`,
       )
       .replace(
         "vec4 diffuseColor = vec4( diffuse, opacity );",
-        `float groove = 1.0 - smoothstep(0.0, 0.0075, vLine.x);
-float detail = 1.0 - smoothstep(0.0, 0.005, vLine.y);
-vec3 baseCol = vZoneColor * (1.0 - 0.3 * groove) * (1.0 - 0.12 * detail);
-baseCol *= mix(0.58, 1.0, vAO);
+        `float groove = 1.0 - smoothstep(0.0, 0.0065, vLine.x);
+float detail = 1.0 - smoothstep(0.0, 0.0045, vLine.y);
+vec3 baseCol = vZoneColor * (1.0 - 0.34 * groove) * (1.0 - 0.18 * detail);
+baseCol *= mix(0.48, 1.0, vAO);
 vec4 diffuseColor = vec4( baseCol, opacity );`,
       )
       .replace(
@@ -118,7 +118,7 @@ vec4 diffuseColor = vec4( baseCol, opacity );`,
         "#include <opaque_fragment>",
         `float ndv = clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0);
 float rim = pow(1.0 - ndv, 3.0);
-outgoingLight += vec3(1.0) * rim * 0.1 * vAO + vZoneColor * rim * vSelW * (0.5 + 0.7 * uPulse);
+outgoingLight += vec3(1.0) * rim * 0.16 * vAO + vZoneColor * rim * vSelW * (0.5 + 0.7 * uPulse);
 #include <opaque_fragment>`,
       );
   };
@@ -135,6 +135,8 @@ function makeHullMaterial() {
 void main() {
   vec3 p = position + normal * uWidth;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+  // push the hull ~7 cm back so shallow creases never pick up stray ink
+  gl_Position.z += 0.0015 * gl_Position.w;
 }`,
     fragmentShader: `uniform vec3 uInk;
 void main() {
@@ -399,13 +401,14 @@ export function BodyViewer({
         frameloop={visible ? "always" : "never"}
         dpr={[1, 1.75]}
         gl={{ antialias: true, alpha: true }}
-        camera={{ fov: 32, position: [0, 0.95, 3.15], near: 0.1, far: 20 }}
+        camera={{ fov: 33.5, position: [0, 0.95, 3.15], near: 0.1, far: 20 }}
         style={{ background: "transparent", touchAction: "pan-y" }}
       >
-        <hemisphereLight args={["#ffffff", "#9fb8b2", 1.05]} />
-        <directionalLight position={[2.8, 3.4, 2.6]} intensity={3.1} />
-        <directionalLight position={[-3, 1.8, 1.5]} intensity={0.55} color="#ffe2d6" />
-        <directionalLight position={[0.5, 2.5, -3.5]} intensity={1.1} color="#fff6ea" />
+        <hemisphereLight args={["#ffffff", "#9fb8b2", 0.85]} />
+        <directionalLight position={[2.6, 3.2, 2.8]} intensity={3.4} />
+        <directionalLight position={[-3, 1.2, 2]} intensity={0.7} color="#ffe6dc" />
+        <directionalLight position={[-2.6, 2.6, -3]} intensity={1.9} color="#fff4e8" />
+        <directionalLight position={[2.8, 1.4, -2.6]} intensity={1.2} color="#f2fbff" />
         <Rig selected={selected} ready={data !== null} reduced={reduced} controls={controls}>
           {data && <Body data={data} trained={trained} selected={selected} onSelect={onSelect} reduced={reduced} />}
         </Rig>
@@ -423,7 +426,7 @@ export function BodyViewer({
         )}
         <OrbitControls
           ref={controls}
-          target={[0, 0.92, 0]}
+          target={[0, 0.905, 0]}
           enableZoom={false}
           enablePan={false}
           enableDamping

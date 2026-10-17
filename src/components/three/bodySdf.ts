@@ -33,7 +33,7 @@ export interface BodyData {
   ms: number;
 }
 
-const H = 0.0074; // grid spacing (m)
+const H = 0.0066; // grid spacing (m)
 const B = 4; // block size (cells) for primitive culling
 const BAND = 0.03; // primitives this close to a block are evaluated for it
 const BIG = 1;
@@ -143,13 +143,17 @@ function* surfaceNets(
   const cellV = new Int32Array(nx * ny * nz).fill(-1);
   const off = [0, 1, nx, nx + 1, nxy, nxy + 1, nxy + nx, nxy + nx + 1];
   const v = new Float64Array(8);
-  const far = h * 3; // a corner this far from the surface means no crossing in the cell
+  const far = h * 4;
   for (let k = 0; k < nz - 1; k++) {
     for (let j = 0; j < ny - 1; j++) {
       for (let i = 0; i < nx - 1; i++) {
         const id = i + nx * j + nxy * k;
+        // cheap reject: both diagonal corners far away on the same side. (The
+        // ellipsoid distance is only approximate, so one corner alone is not
+        // a safe test - it tore small holes next to thin sheet muscles.)
         const g0 = g[id];
-        if (g0 > far || g0 < -far) continue;
+        const g7 = g[id + nxy + nx + 1];
+        if ((g0 > far && g7 > far) || (g0 < -far && g7 < -far)) continue;
         let mask = 0;
         for (let c = 0; c < 8; c++) {
           const val = g[id + off[c]];
@@ -337,16 +341,20 @@ export function* buildBody(): Generator<undefined, BodyData, undefined> {
   yield* surfaceNets(g, nx, ny, nz, gx0, Y0, Z0, H, posArr, idxArr);
 
   // coarse proxy for picking: every 2nd sample
+  // (x pairs are averaged so the proxy stays mirror-symmetric like the body)
   const mx = Math.floor(nx / 2);
   const my = Math.floor(ny / 2);
   const mz = Math.floor(nz / 2);
   const g2 = new Float32Array(mx * my * mz);
   for (let k = 0; k < mz; k++)
     for (let j = 0; j < my; j++)
-      for (let i = 0; i < mx; i++) g2[i + mx * (j + my * k)] = g[2 * i + nx * (2 * j) + nxy * (2 * k)];
+      for (let i = 0; i < mx; i++) {
+        const id = 2 * i + nx * (2 * j) + nxy * (2 * k);
+        g2[i + mx * (j + my * k)] = (g[id] + g[id + 1]) * 0.5;
+      }
   const pickPos: number[] = [];
   const pickIdx: number[] = [];
-  yield* surfaceNets(g2, mx, my, mz, gx0, Y0, Z0, H * 2, pickPos, pickIdx);
+  yield* surfaceNets(g2, mx, my, mz, gx0 + H * 0.5, Y0, Z0, H * 2, pickPos, pickIdx);
 
   // --- per-vertex attributes ---
   const nv = posArr.length / 3;
@@ -412,8 +420,8 @@ export function* buildBody(): Generator<undefined, BodyData, undefined> {
   };
 
   const e = H * 0.6;
-  const aoSteps = [0.012, 0.03, 0.06];
-  const aoW = [0.4, 0.35, 0.25];
+  const aoSteps = [0.006, 0.014, 0.03, 0.06];
+  const aoW = [0.3, 0.3, 0.25, 0.15];
   for (let v = 0; v < nv; v++) {
     const x = position[v * 3];
     const y = position[v * 3 + 1];
@@ -434,13 +442,18 @@ export function* buildBody(): Generator<undefined, BodyData, undefined> {
     normal[v * 3 + 1] = gyv;
     normal[v * 3 + 2] = gzv;
 
+    // AO: short probes use the exact field (catch the tight grooves between
+    // bellies), long probes the grid (broad cavities: armpit, crotch, waist)
     let occ = 0;
-    for (let s = 0; s < 3; s++) {
+    for (let s = 0; s < aoSteps.length; s++) {
       const st = aoSteps[s];
-      const d = gridAt(x + gxv * st, y + gyv * st, z + gzv * st);
+      const px = x + gxv * st;
+      const py = y + gyv * st;
+      const pz = z + gzv * st;
+      const d = s < 2 ? sdfAt(px, py, pz) : gridAt(px, py, pz);
       occ += (aoW[s] * Math.max(0, st - d)) / st;
     }
-    ao[v] = Math.min(1, Math.max(0, 1 - occ * 1.15));
+    ao[v] = Math.min(1, Math.max(0.2, 1 - occ * 1.25));
 
     const [z1, z2, groove, detail] = classify(x, y, z);
     zone[v * 3] = z1;
