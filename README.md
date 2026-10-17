@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BetterHealth
 
-## Getting Started
+Train every muscle, log what you eat, and get a coach that reads your day.
 
-First, run the development server:
+- **Train**: tap a body map (16 muscle groups, front and back) to see moves, build a workout and log sets.
+- **Food**: type "2 eggs and a banana". A built-in table of 150 foods answers instantly; anything else can go to OpenAI, with results cached in Supabase.
+- **Today**: calorie ring, macros and micronutrients against your Mifflin-St Jeor targets.
+- **Coach**: reads your day and says what to do next (OpenAI when signed in, rule-based otherwise).
+
+Design notes and the planning prompt are in [docs/MASTER_PROMPT.md](docs/MASTER_PROMPT.md).
+
+## Run it
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+With no env vars the app runs in **demo mode**: data lives in the browser and AI is off.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env.example` to `.env.local`.
 
-## Learn More
+| Variable | Where | Purpose |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | Accounts and cloud sync |
+| `SUPABASE_SERVICE_ROLE_KEY` | server only | Shared food cache and AI usage caps. AI stays off without it |
+| `OPENAI_API_KEY`, `OPENAI_MODEL` | server only | AI food estimates, coach, workout builder |
+| `AI_DISABLED`, `AI_GLOBAL_DAILY_LIMIT` | server only | Kill switch and a daily cap across all users (default 500) |
 
-To learn more about Next.js, take a look at the following resources:
+The schema is in `supabase/migrations/0001_init.sql`. Every table has row-level security. In Supabase, add your site URL and `https://<your-app>.vercel.app/auth/callback` under Authentication, URL configuration so sign-in links work.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Test
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm test
+```
