@@ -107,7 +107,7 @@ varying float vSelEdge;`,
         `float groove = 1.0 - smoothstep(0.0, 0.0065, vLine.x);
 float detail = 1.0 - smoothstep(0.0, 0.0045, vLine.y);
 vec3 baseCol = vZoneColor * (1.0 - 0.34 * groove) * (1.0 - 0.18 * detail);
-baseCol *= mix(0.48, 1.0, vAO);
+baseCol *= mix(0.56, 1.0, vAO);
 vec4 diffuseColor = vec4( baseCol, opacity );`,
       )
       .replace(
