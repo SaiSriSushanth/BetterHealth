@@ -15,6 +15,23 @@ export interface Anatomy {
   count: number;
   /** per primitive AABB: minx, miny, minz, maxx, maxy, maxz */
   box: Float64Array;
+  /** small regions (right side) meshed on a finer grid: feet, hands */
+  refine: Refine[];
+}
+
+/**
+ * A region re-meshed at `scale` x the base grid spacing inside [min, max]
+ * (x >= 0, mirrored). Its "core" is where dot(n, p) > d: there the fine mesh
+ * replaces the coarse one; the fine mesh extends `overlap` past the core so
+ * the seam is covered.
+ */
+export interface Refine {
+  min: [number, number, number];
+  max: [number, number, number];
+  scale: number;
+  n: [number, number, number];
+  d: number;
+  overlap: number;
 }
 
 type V = [number, number, number];
@@ -143,6 +160,7 @@ export function buildAnatomy(): Anatomy {
   // a real crease (separation groove) instead of melting into each other.
   const KM = 0.012; // between heads of one muscle / tight neighbours
   const KB = 0.016; // muscle belly onto the body
+  const UP: V = [0, 1, 0];
 
   // ---- landmarks (right side) ----
   const SH: V = [0.185, 1.445, -0.008];
@@ -152,63 +170,68 @@ export function buildAnatomy(): Anatomy {
   const HP: V = [0.09, 0.93, 0.0];
   const KN: V = [0.106, 0.5, 0.012];
   const AN: V = [0.112, 0.085, -0.02];
+  const HY = -0.018; // head sits a little lower: shorter neck
 
-  // ---- trunk base (rounder, deeper rib cage and abdomen) ----
-  ell("skin", [0, 1.325, -0.008], [0.128, 0.18, 0.11], [0, 0, 0], { k: 0.06, bias: DEEP });
-  ell("skin", [0, 1.12, -0.002], [0.106, 0.14, 0.092], [0, 0, 0], { k: 0.07, bias: DEEP });
+  // ---- trunk base: rib cage tipped back (thoracic kyphosis), lumbar pulled in (lordosis) ----
+  ell("skin", [0, 1.325, -0.014], [0.128, 0.18, 0.11], [-10, 0, 0], { k: 0.06, bias: DEEP });
+  ell("skin", [0, 1.12, 0.012], [0.106, 0.14, 0.088], [0, 0, 0], { k: 0.07, bias: DEEP });
   ell("skin", [0, 0.97, -0.014], [0.138, 0.092, 0.102], [0, 0, 0], { k: 0.06, bias: DEEP });
-  cone("traps", [0, 1.445, -0.016], [0.162, 1.455, -0.024], 0.056, 0.043, { k: 0.05, bias: 0.012 });
+  cone("traps", [0, 1.45, -0.016], [0.162, 1.458, -0.024], 0.058, 0.044, { k: 0.05, bias: 0.012 });
   ell("skin", [0, 0.882, 0.008], [0.042, 0.038, 0.05], [0, 0, 0], { k: 0.04, bias: DEEP });
   // clavicle
-  cone("skin", [0.02, 1.468, 0.056], [0.16, 1.478, 0.004], 0.011, 0.01, { k: 0.02, bias: 0.012 });
+  cone("skin", [0.02, 1.48, 0.056], [0.16, 1.486, 0.004], 0.011, 0.01, { k: 0.02, bias: 0.012 });
 
-  // ---- neck & head ----
-  cone("neck", [0, 1.495, -0.012], [0, 1.63, -0.006], 0.057, 0.048, { k: 0.05, part: 1 });
-  cone("neck", [0.048, 1.625, -0.02], [0.017, 1.49, 0.052], 0.016, 0.014, { k: KM, part: 2 });
-  ell("skin", [0, 1.705, -0.006], [0.076, 0.1, 0.095], [0, 0, 0], { k: 0.04 });
-  ell("skin", [0, 1.635, 0.026], [0.059, 0.058, 0.072], [15, 0, 0], { k: 0.04 });
-  ell("skin", [0, 1.593, 0.066], [0.026, 0.02, 0.022], [0, 0, 0], { k: 0.02 });
-  ell("skin", [0, 1.67, 0.098], [0.011, 0.022, 0.016], [-15, 0, 0], { k: 0.012 });
-  ell("skin", [0, 1.712, 0.076], [0.058, 0.016, 0.024], [0, 0, 0], { k: 0.02 });
-  ell("skin", [0.042, 1.66, 0.066], [0.022, 0.016, 0.018], [0, 0, 0], { k: 0.02 });
-  ell("skin", [0.077, 1.672, -0.008], [0.011, 0.029, 0.019], [0, 0, 0], { k: 0.01 });
+  // ---- neck & head (shorter, thicker neck) ----
+  cone("neck", [0, 1.485, -0.012], [0, 1.6, -0.008], 0.05, 0.041, { k: 0.04, part: 1 });
+  cone("neck", [0.05, 1.6, -0.02], [0.018, 1.492, 0.052], 0.018, 0.016, { k: KM, part: 2 });
+  ell("skin", [0, 1.705 + HY, -0.006], [0.076, 0.1, 0.095], [0, 0, 0], { k: 0.04 });
+  ell("skin", [0, 1.635 + HY, 0.026], [0.059, 0.058, 0.072], [15, 0, 0], { k: 0.04 });
+  ell("skin", [0, 1.593 + HY, 0.066], [0.026, 0.02, 0.022], [0, 0, 0], { k: 0.02 });
+  ell("skin", [0, 1.67 + HY, 0.098], [0.011, 0.022, 0.016], [-15, 0, 0], { k: 0.012 });
+  ell("skin", [0, 1.712 + HY, 0.076], [0.058, 0.016, 0.024], [0, 0, 0], { k: 0.02 });
+  ell("skin", [0.042, 1.66 + HY, 0.066], [0.022, 0.016, 0.018], [0, 0, 0], { k: 0.02 });
+  ell("skin", [0.077, 1.672 + HY, -0.008], [0.011, 0.029, 0.019], [0, 0, 0], { k: 0.01 });
 
-  // ---- traps: yoke over the shoulders + kite down the spine ----
-  ell("traps", [0.078, 1.505, -0.036], [0.102, 0.036, 0.054], [0, 0, -24], { k: 0.03 });
-  ell("traps", [0.05, 1.405, -0.098], [0.09, 0.08, 0.016], [0, 0, -8], { k: 0.03 });
-  ell("traps", [0.026, 1.272, -0.104], [0.04, 0.1, 0.014], [0, 0, 14], { k: KB });
+  // ---- traps: yoke rising up the neck + raised diamond down the spine ----
+  ell("traps", [0.075, 1.515, -0.036], [0.1, 0.042, 0.056], [0, 0, -26], { k: 0.03 });
+  cone("traps", [0.02, 1.585, -0.036], [0.13, 1.497, -0.026], 0.026, 0.024, { k: 0.026 });
+  ell("traps", [0.05, 1.4, -0.106], [0.09, 0.08, 0.02], [0, 0, -8], { k: 0.03 });
+  ell("traps", [0.026, 1.272, -0.104], [0.04, 0.1, 0.013], [0, 0, 14], { k: 0.024 });
   // back of the neck reads as upper traps
-  ell("traps", [0, 1.56, -0.045], [0.05, 0.075, 0.03], [0, 0, 0], { op: "paint" });
+  ell("traps", [0, 1.545, -0.048], [0.052, 0.07, 0.03], [0, 0, 0], { op: "paint" });
 
   // ---- shoulders: deltoid cap + anterior / lateral / posterior heads, rotator cuff ----
   ell("shoulders", [0.2, 1.443, -0.006], [0.046, 0.054, 0.052], [0, 0, -18], { k: 0.02, part: 2 });
   limb("shoulders", SH, EL, -0.06, 0.42, 0.028, 0.031, -0.002, 0.031, { k: KM, part: 1 });
   limb("shoulders", SH, EL, -0.1, 0.47, 0.033, 0.034, -0.027, 0, { k: KM, part: 2 });
-  limb("shoulders", SH, EL, -0.06, 0.4, 0.028, 0.029, -0.004, -0.031, { k: KM, part: 3 });
-  limb("shoulders", [0.12, 1.385, -0.096], [0.168, 1.348, -0.07], 0, 1, 0.03, 0.012, 0, 0, { k: KM, part: 4 }, [0.5, 0.1, -0.86]);
+  limb("shoulders", SH, EL, -0.06, 0.42, 0.029, 0.033, -0.004, -0.034, { k: KM, part: 3 });
+  // infraspinatus on the scapula
+  limb("shoulders", [0.108, 1.392, -0.1], [0.172, 1.338, -0.068], 0, 1, 0.036, 0.013, 0, 0, { k: 0.016, part: 4 }, [0.5, 0.1, -0.86]);
 
-  // ---- chest: sternal mass with a hard lower edge + clavicular head to the arm ----
-  ell("chest", [0.063, 1.346, 0.082], [0.066, 0.058, 0.036], [-18, 16, 4], { k: KB, part: 1 });
-  ell("chest", [0.118, 1.368, 0.058], [0.05, 0.036, 0.024], [-10, 40, 14], { k: 0.02, part: 1 });
+  // ---- chest: athletic pec with a clean lower edge, clavicular head up to the collarbone ----
+  ell("chest", [0.063, 1.35, 0.074], [0.064, 0.054, 0.028], [-12, 16, 4], { k: 0.02, part: 1 });
+  ell("chest", [0.114, 1.362, 0.05], [0.046, 0.032, 0.018], [-10, 40, 8], { k: 0.024, part: 1 });
+  ell("chest", [0.056, 1.41, 0.068], [0.056, 0.03, 0.016], [-32, 14, 6], { k: 0.028, part: 1 });
 
-  // ---- lats: wing from the armpit into the lumbar fascia + teres bulge ----
-  limb("lats", [0.155, 1.385, -0.04], [0.1, 1.2, -0.084], 0, 1, 0.048, 0.028, 0, 0, { k: KB, part: 1 }, [0.75, 0, -0.66]);
-  limb("lats", [0.11, 1.25, -0.084], [0.045, 1.065, -0.098], 0, 1, 0.034, 0.016, 0, 0, { k: KB, part: 1 }, [0.35, 0, -0.94]);
+  // ---- lats: flared wing from the armpit into the lumbar fascia + teres ----
+  limb("lats", [0.16, 1.385, -0.04], [0.104, 1.2, -0.086], 0, 1, 0.048, 0.032, 0, 0, { k: KB, part: 1 }, [0.75, 0, -0.66]);
+  limb("lats", [0.11, 1.25, -0.09], [0.045, 1.065, -0.082], 0, 1, 0.034, 0.016, 0, 0, { k: KB, part: 1 }, [0.35, 0, -0.94]);
   cone("lats", [0.135, 1.37, -0.05], [0.19, 1.4, -0.028], 0.03, 0.019, { k: KM, part: 1 });
-  limb("lats", [0.115, 1.318, -0.1], [0.178, 1.372, -0.056], 0, 1, 0.018, 0.016, 0, 0, { k: KM, part: 2 }, [0.4, 0.2, -0.9]);
+  limb("lats", [0.115, 1.318, -0.104], [0.178, 1.372, -0.058], 0, 1, 0.019, 0.018, 0, 0, { k: KM, part: 2 }, [0.4, 0.2, -0.9]);
 
-  // ---- lower back: erector columns either side of the spine ----
-  ell("lowerback", [0.032, 1.09, -0.094], [0.026, 0.15, 0.026], [0, 0, 0], { k: KM });
+  // ---- lower back: raised erector columns with a deep spinal groove, following the S-curve ----
+  limb("lowerback", [0.032, 0.97, -0.074], [0.034, 1.17, -0.076], 0, 1, 0.024, 0.022, 0, 0, { k: KM, part: 1 }, [0, 0, -1]);
+  limb("lowerback", [0.03, 1.15, -0.086], [0.024, 1.31, -0.114], 0, 1, 0.02, 0.012, 0, 0, { k: 0.02, part: 2, bias: 0.01 }, [0, 0, -1]);
 
   // ---- abs: raised rectus blocks; gaps = tendinous intersections + linea alba ----
   rbox("abs", [0.029, 1.256, 0.09], [0.024, 0.024, 0.014], 0.012, [-16, 10, 0], { k: 0.008, part: 1 });
-  rbox("abs", [0.03, 1.194, 0.084], [0.025, 0.024, 0.014], 0.012, [-6, 10, 0], { k: 0.008, part: 2 });
-  rbox("abs", [0.03, 1.132, 0.086], [0.025, 0.024, 0.014], 0.012, [0, 10, 0], { k: 0.008, part: 3 });
-  ell("abs", [0.025, 1.035, 0.07], [0.025, 0.066, 0.022], [10, 10, 4], { k: 0.01, part: 4 });
+  rbox("abs", [0.03, 1.194, 0.088], [0.025, 0.024, 0.014], 0.012, [-6, 10, 0], { k: 0.008, part: 2 });
+  rbox("abs", [0.03, 1.132, 0.09], [0.025, 0.024, 0.014], 0.012, [0, 10, 0], { k: 0.008, part: 3 });
+  ell("abs", [0.025, 1.035, 0.074], [0.025, 0.066, 0.022], [10, 10, 4], { k: 0.01, part: 4 });
 
   // ---- obliques: external oblique sheet + serratus fingers under the pec ----
-  limb("obliques", [0.11, 1.21, 0.04], [0.106, 0.975, 0.042], 0, 1, 0.046, 0.013, 0, 0, { k: 0.022, part: 1 }, [0.86, 0, 0.5]);
-  limb("obliques", [0.118, 1.2, -0.012], [0.112, 1.02, -0.02], 0, 1, 0.04, 0.014, 0, 0, { k: 0.024, part: 1 }, [1, 0, -0.15]);
+  limb("obliques", [0.11, 1.21, 0.044], [0.106, 0.975, 0.046], 0, 1, 0.046, 0.013, 0, 0, { k: 0.022, part: 1 }, [0.86, 0, 0.5]);
+  limb("obliques", [0.118, 1.2, -0.008], [0.112, 1.02, -0.014], 0, 1, 0.04, 0.014, 0, 0, { k: 0.024, part: 1 }, [1, 0, -0.15]);
   for (let i = 0; i < 3; i++) {
     const y = 1.318 - 0.03 * i;
     limb("obliques", [0.124, y + 0.012, 0.03], [0.104, y - 0.012, 0.074], 0, 1, 0.008, 0.009, 0, -0.002, {
@@ -230,21 +253,25 @@ export function buildAnatomy(): Anatomy {
   limb("forearms", EL, WR, -0.02, 0.6, 0.03, 0.029, 0.014, 0.013, { k: KM, part: 1 });
   limb("forearms", EL, WR, -0.07, 0.55, 0.03, 0.033, -0.021, 0.004, { k: KM, part: 2 });
   limb("forearms", EL, WR, 0.05, 0.62, 0.024, 0.022, -0.004, -0.022, { k: KM, part: 3 });
+
+  // ---- hand: palm, four separated fingers (slightly curled), thumb ----
   const hf = frame(WR, HE);
-  limb("skin", WR, HE, -0.02, 0.5, 0.036, 0.015, 0, 0, { k: 0.02 });
-  limb("skin", WR, HE, 0.42, 1.0, 0.032, 0.011, 0.002, -0.004, { k: 0.015 });
-  cone(
-    "skin",
-    add(add(lerp(WR, HE, 0.14), mul(hf.X, -0.026)), mul(hf.Z, 0.01)),
-    add(add(lerp(WR, HE, 0.48), mul(hf.X, -0.034)), mul(hf.Z, 0.02)),
-    0.012,
-    0.009,
-    { k: 0.012 },
-  );
+  const hp = (t: number, ox: number, oz: number): V => add(add(lerp(WR, HE, t), mul(hf.X, ox)), mul(hf.Z, oz));
+  limb("skin", WR, HE, -0.02, 0.54, 0.035, 0.015, 0, 0, { k: 0.02 });
+  const fingers: [number, number, number][] = [
+    [-0.024, 0.0084, 0.92], // index (thumb side)
+    [-0.008, 0.0088, 1.0], // middle
+    [0.008, 0.0084, 0.96], // ring
+    [0.022, 0.0074, 0.85], // little
+  ];
+  fingers.forEach(([ox, r, tl], i) => {
+    cone("skin", hp(0.5, ox, 0.002), hp(tl, ox * 1.08, 0.014), r, r * 0.82, { k: 0.004, part: 31 + i });
+  });
+  cone("skin", hp(0.13, -0.027, 0.01), hp(0.5, -0.037, 0.026), 0.012, 0.0085, { k: 0.008, part: 35 });
 
   // ---- leg ----
   cone("skin", HP, KN, 0.066, 0.046, { k: 0.03, bias: DEEP });
-  ell("glutes", [0.07, 0.94, -0.068], [0.073, 0.082, 0.054], [12, 0, 8], { k: KB, part: 1 });
+  ell("glutes", [0.07, 0.935, -0.066], [0.07, 0.078, 0.048], [8, 0, 8], { k: KB, part: 1 });
   limb("glutes", [0.128, 1.035, -0.03], [0.112, 0.955, -0.052], 0, 1, 0.042, 0.02, 0, -0.004, { k: 0.026, part: 2 }, [0.75, 0, -0.66]);
   limb("quads", HP, KN, 0.04, 0.86, 0.034, 0.042, 0, 0.042, { k: KM, part: 1 });
   limb("quads", HP, KN, 0.08, 0.9, 0.045, 0.052, -0.04, 0.008, { k: KM, part: 2 });
@@ -262,15 +289,57 @@ export function buildAnatomy(): Anatomy {
   limb("calves", KN, AN, 0.3, 0.8, 0.044, 0.029, 0, -0.019, { k: 0.014, part: 4 });
   cone("skin", add(lerp(KN, AN, 0.75), [0, 0, -0.026]), add(AN, [0, -0.03, -0.04]), 0.011, 0.012, { k: 0.02 });
   ell("skin", AN, [0.025, 0.032, 0.027], [0, 0, 0], { k: 0.03 });
-  sph("skin", add(AN, [0.024, 0.005, 0]), 0.011, { k: 0.012 });
-  sph("skin", add(AN, [-0.021, 0.012, 0.002]), 0.011, { k: 0.012 });
-  ell("skin", [0.112, 0.032, -0.038], [0.024, 0.03, 0.03], [0, 0, 0], { k: 0.03 });
-  ell("skin", [0.118, 0.026, 0.05], [0.033, 0.023, 0.09], [0, -5, 0], { k: 0.035 });
-  ell("skin", [0.123, 0.014, 0.128], [0.037, 0.013, 0.032], [0, -5, 0], { k: 0.03 });
+  // ankle bones: lateral malleolus sits lower than the medial one
+  sph("skin", add(AN, [0.025, -0.004, -0.004]), 0.012, { k: 0.01 });
+  sph("skin", add(AN, [-0.022, 0.01, 0.002]), 0.012, { k: 0.01 });
+
+  // ---- foot: ~26 cm long, toes out 10 deg; heel, instep, arch, ball, five toes ----
+  const toeOut = 10 * D2R;
+  const fF: V = [Math.sin(toeOut), 0, Math.cos(toeOut)]; // forward
+  const fL: V = [Math.cos(toeOut), 0, -Math.sin(toeOut)]; // lateral (outward)
+  const FO: V = [AN[0], 0, AN[2] + 0.004];
+  const fp = (u: number, v: number, w: number): V => add(add(add(FO, mul(fL, u)), mul(UP, v)), mul(fF, w));
+  const footAx: [V, V, V] = [fL, UP, fF];
+  ellAxes("skin", fp(0, 0.031, -0.04), footAx, [0.024, 0.03, 0.028], { k: 0.03 }); // heel
+  limb("skin", fp(0.002, 0.052, -0.012), fp(0.008, 0.024, 0.112), 0, 1, 0.034, 0.021, 0, 0, { k: 0.03 }, UP); // instep
+  ellAxes("skin", fp(0.024, 0.013, 0.05), footAx, [0.014, 0.013, 0.062], { k: 0.022 }); // outer edge
+  ellAxes("skin", fp(0.0, 0.019, 0.118), footAx, [0.041, 0.018, 0.026], { k: 0.02 }); // ball
+  const toes: [number, number, number][] = [
+    [-0.025, 0.0115, 0.182], // big toe
+    [-0.005, 0.0082, 0.174],
+    [0.01, 0.0078, 0.165],
+    [0.023, 0.0073, 0.155],
+    [0.035, 0.0068, 0.143],
+  ];
+  toes.forEach(([u, r, tip], i) => {
+    cone("skin", fp(u, 0.02, 0.124), fp(u * 1.06, r * 0.95, tip - r), r * 1.05, r, { k: 0.004, part: 11 + i });
+  });
+  // big-toe nail
+  const [bu, br, btip] = toes[0];
+  ellAxes("skin", fp(bu * 1.06, br * 1.75, btip - br * 1.3), footAx, [br * 0.72, br * 0.22, br * 0.85], {
+    k: 0.003,
+    part: 21,
+  });
 
   // ---- carved details (subtractions last) ----
-  ell("skin", [0, 1.085, 0.094], [0.007, 0.008, 0.01], [0, 0, 0], { k: 0.01, op: "sub" });
-  ell("skin", [0.03, 1.69, 0.094], [0.016, 0.009, 0.008], [0, 0, 0], { k: 0.012, op: "sub" });
+  ell("skin", [0, 1.085, 0.098], [0.007, 0.008, 0.01], [0, 0, 0], { k: 0.01, op: "sub" });
+  ell("skin", [0.03, 1.69 + HY, 0.094], [0.016, 0.009, 0.008], [0, 0, 0], { k: 0.012, op: "sub" });
+  ellAxes("skin", fp(-0.036, 0.0, 0.036), footAx, [0.022, 0.016, 0.046], { k: 0.012, op: "sub" }); // medial arch
 
-  return { data: Float64Array.from(recs), stride: STRIDE, count, box: Float64Array.from(boxes) };
+  const handDir = norm(sub(HE, WR));
+  const refine: Refine[] = [
+    // feet: everything below the ankle
+    { min: [0.04, -0.02, -0.12], max: [0.215, 0.108, 0.23], scale: 0.58, n: [0, -1, 0], d: -0.075, overlap: 0.012 },
+    // hands: everything 1.5 cm past the wrist
+    {
+      min: [0.335, 0.715, -0.035],
+      max: [0.5, 0.965, 0.08],
+      scale: 0.72,
+      n: handDir,
+      d: dot(handDir, WR) + 0.015,
+      overlap: 0.012,
+    },
+  ];
+
+  return { data: Float64Array.from(recs), stride: STRIDE, count, box: Float64Array.from(boxes), refine };
 }

@@ -167,6 +167,9 @@ function Body({
     g.setAttribute("aLine", new THREE.BufferAttribute(data.line, 2));
     g.setAttribute("aAO", new THREE.BufferAttribute(data.ao, 1));
     g.setIndex(new THREE.BufferAttribute(data.index, 1));
+    // group 1 = finer feet/hand patches, drawn with a depth bias over the coarse seam
+    g.addGroup(0, data.fineStart, 0);
+    g.addGroup(data.fineStart, data.index.length - data.fineStart, 1);
     g.computeBoundingSphere();
     return g;
   }, [data]);
@@ -195,6 +198,14 @@ function Body({
     };
   }, []);
   const material = useMemo(() => makeBodyMaterial(uniforms), [uniforms]);
+  const fineMaterial = useMemo(() => {
+    const m = makeBodyMaterial(uniforms);
+    m.polygonOffset = true;
+    m.polygonOffsetFactor = -1;
+    m.polygonOffsetUnits = -4;
+    return m;
+  }, [uniforms]);
+  const materials = useMemo(() => [material, fineMaterial], [material, fineMaterial]);
   const hull = useMemo(() => makeHullMaterial(), []);
   const pickMat = useMemo(() => new THREE.MeshBasicMaterial({ visible: false }), []);
 
@@ -208,10 +219,11 @@ function Body({
   useEffect(
     () => () => {
       material.dispose();
+      fineMaterial.dispose();
       hull.dispose();
       pickMat.dispose();
     },
-    [material, hull, pickMat],
+    [material, fineMaterial, hull, pickMat],
   );
 
   const live = useRef({ trained, selected, reduced });
@@ -271,7 +283,7 @@ function Body({
 
   return (
     <group>
-      <mesh geometry={geo} material={material} />
+      <mesh geometry={geo} material={materials} />
       <mesh geometry={pickGeo} material={hull} />
       <mesh
         geometry={pickGeo}

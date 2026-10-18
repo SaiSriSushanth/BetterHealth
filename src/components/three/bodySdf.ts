@@ -12,13 +12,15 @@
  *   - a groove value (distance to the nearest zone / sub-muscle border)
  * The build is a generator so it can be time-sliced and never blocks a frame.
  */
-import { buildAnatomy, type Anatomy } from "./bodyAnatomy";
+import { buildAnatomy, type Anatomy, type Refine } from "./bodyAnatomy";
 import { SKIN, ZONE_COUNT } from "./zones";
 
 export interface BodyData {
   position: Float32Array;
   normal: Float32Array;
   index: Uint32Array;
+  /** index offset where the finer feet/hand triangles start (drawn with a depth bias) */
+  fineStart: number;
   /** per vertex: zoneA, zoneB, mix (0 = all A, 0.5 = on the border) */
   zone: Float32Array;
   /** per vertex: distance to zone border, distance to sub-muscle border */
@@ -33,7 +35,7 @@ export interface BodyData {
   ms: number;
 }
 
-const H = 0.0066; // grid spacing (m)
+const H = 0.0068; // grid spacing (m)
 const B = 4; // block size (cells) for primitive culling
 const BAND = 0.03; // primitives this close to a block are evaluated for it
 const BIG = 1;
@@ -340,6 +342,94 @@ export function* buildBody(): Generator<undefined, BodyData, undefined> {
   const gx0 = (-nh + 0.5) * H;
   yield* surfaceNets(g, nx, ny, nz, gx0, Y0, Z0, H, posArr, idxArr);
 
+  // --- local refinement: feet and hands re-meshed on a finer grid ---
+  // Coarse triangles fully inside a region's core are dropped; the fine mesh
+  // covers the core plus an overlap band (drawn with a depth bias, so the
+  // seam never shows a crack).
+  const coreOf = (r: Refine, x: number, y: number, z: number, slack: number) => {
+    const ax = Math.abs(x);
+    return (
+      ax >= r.min[0] &&
+      ax <= r.max[0] &&
+      y >= r.min[1] &&
+      y <= r.max[1] &&
+      z >= r.min[2] &&
+      z <= r.max[2] &&
+      r.n[0] * ax + r.n[1] * y + r.n[2] * z > r.d - slack
+    );
+  };
+  {
+    const kept: number[] = [];
+    for (let t = 0; t < idxArr.length; t += 3) {
+      let drop = false;
+      for (const r of an.refine) {
+        let all = true;
+        for (let c = 0; c < 3 && all; c++) {
+          const o = idxArr[t + c] * 3;
+          all = coreOf(r, posArr[o], posArr[o + 1], posArr[o + 2], 0);
+        }
+        if (all) drop = true;
+      }
+      if (!drop) kept.push(idxArr[t], idxArr[t + 1], idxArr[t + 2]);
+    }
+    idxArr.length = 0;
+    for (let i = 0; i < kept.length; i++) idxArr.push(kept[i]);
+  }
+  const fineStart = idxArr.length;
+  for (const r of an.refine) {
+    const h = H * r.scale;
+    const fx = Math.ceil((r.max[0] - r.min[0]) / h) + 1;
+    const fy = Math.ceil((r.max[1] - r.min[1]) / h) + 1;
+    const fz = Math.ceil((r.max[2] - r.min[2]) / h) + 1;
+    const gf = new Float32Array(fx * fy * fz);
+    for (let k = 0; k < fz; k++) {
+      const z = r.min[2] + k * h;
+      for (let j = 0; j < fy; j++) {
+        const y = r.min[1] + j * h;
+        const row = fx * (j + fy * k);
+        // keep the grid border outside so the box faces never close the surface
+        for (let i = 0; i < fx; i++) {
+          const border = i === 0 || j === 0 || k === 0 || i === fx - 1 || j === fy - 1 || k === fz - 1;
+          gf[row + i] = border ? BIG : sdfAt(r.min[0] + i * h, y, z);
+        }
+      }
+      yield;
+    }
+    const fp: number[] = [];
+    const fi: number[] = [];
+    yield* surfaceNets(gf, fx, fy, fz, r.min[0], r.min[1], r.min[2], h, fp, fi);
+    // keep triangles touching the core (+ overlap); compact the vertices they use
+    const remap = new Int32Array(fp.length / 3).fill(-1);
+    const tris: number[] = [];
+    for (let t = 0; t < fi.length; t += 3) {
+      let keep = false;
+      for (let c = 0; c < 3 && !keep; c++) {
+        const o = fi[t + c] * 3;
+        keep = coreOf(r, fp[o], fp[o + 1], fp[o + 2], r.overlap);
+      }
+      if (keep) tris.push(fi[t], fi[t + 1], fi[t + 2]);
+    }
+    const local: number[] = [];
+    for (const v of tris) {
+      if (remap[v] < 0) {
+        remap[v] = local.length / 3;
+        local.push(fp[v * 3], fp[v * 3 + 1], fp[v * 3 + 2]);
+      }
+    }
+    const nf = local.length / 3;
+    const base = posArr.length / 3;
+    for (let v = 0; v < nf; v++) posArr.push(local[v * 3], local[v * 3 + 1], local[v * 3 + 2]);
+    for (let v = 0; v < nf; v++) posArr.push(-local[v * 3], local[v * 3 + 1], local[v * 3 + 2]);
+    for (let t = 0; t < tris.length; t += 3) {
+      const a = remap[tris[t]];
+      const b = remap[tris[t + 1]];
+      const c = remap[tris[t + 2]];
+      idxArr.push(base + a, base + b, base + c);
+      // mirrored copy: reversed winding
+      idxArr.push(base + nf + a, base + nf + c, base + nf + b);
+    }
+  }
+
   // coarse proxy for picking: every 2nd sample
   // (x pairs are averaged so the proxy stays mirror-symmetric like the body)
   const mx = Math.floor(nx / 2);
@@ -470,6 +560,7 @@ export function* buildBody(): Generator<undefined, BodyData, undefined> {
     position,
     normal,
     index,
+    fineStart,
     zone,
     line,
     ao,
