@@ -1,4 +1,4 @@
-import type { FoodLog, Profile, WorkoutLog } from "@/lib/types";
+import type { CustomFood, FoodLog, Profile, WeightLog, WorkoutLog } from "@/lib/types";
 
 export interface Repo {
   kind: "local" | "cloud";
@@ -6,10 +6,20 @@ export interface Repo {
   saveProfile(p: Profile): Promise<void>;
   listFood(): Promise<FoodLog[]>;
   addFood(f: Omit<FoodLog, "id">): Promise<FoodLog>;
+  updateFood(id: string, patch: Partial<Omit<FoodLog, "id" | "day">>): Promise<FoodLog>;
   deleteFood(id: string): Promise<void>;
   listWorkouts(): Promise<WorkoutLog[]>;
   addWorkout(w: Omit<WorkoutLog, "id">): Promise<WorkoutLog>;
+  updateWorkout(id: string, patch: Partial<Omit<WorkoutLog, "id">>): Promise<WorkoutLog>;
   deleteWorkout(id: string): Promise<void>;
+  listWeights(): Promise<WeightLog[]>;
+  /** one entry per day: adding for an existing day replaces it */
+  setWeight(day: string, kg: number): Promise<WeightLog>;
+  deleteWeight(id: string): Promise<void>;
+  listCustomFoods(): Promise<CustomFood[]>;
+  addCustomFood(f: Omit<CustomFood, "id">): Promise<CustomFood>;
+  updateCustomFood(id: string, patch: Partial<Omit<CustomFood, "id">>): Promise<CustomFood>;
+  deleteCustomFood(id: string): Promise<void>;
 }
 
 export const uid = () =>

@@ -15,6 +15,7 @@ export interface Profile {
   activity: Activity;
   equipment: Equipment[];
   units: "metric" | "imperial";
+  reminders?: Reminders;
 }
 
 export interface Targets {
@@ -48,7 +49,7 @@ export interface FoodLog extends Nutrients {
   /** human label, e.g. "2 eggs" */
   portion: string;
   grams: number;
-  source: "table" | "ai" | "manual";
+  source: "table" | "ai" | "manual" | "custom" | "barcode" | "photo";
 }
 
 export interface WorkoutSet {
@@ -96,4 +97,42 @@ export interface Exercise {
   equipment: Equipment;
   difficulty: Difficulty;
   cue: string;
+}
+
+export interface WeightLog {
+  id: string;
+  /** user's local date, YYYY-MM-DD; one entry per day */
+  day: string;
+  kg: number;
+}
+
+export interface CustomFoodItem {
+  name: string;
+  grams: number;
+  nutrients: Nutrients;
+}
+
+/** A food or whole meal the user saved to log again in one tap. */
+export interface CustomFood {
+  id: string;
+  name: string;
+  portion: string;
+  grams: number;
+  /** totals for the saved portion */
+  nutrients: Nutrients;
+  favorite: boolean;
+  kind: "food" | "meal";
+  /** for kind "meal": what it is made of */
+  items?: CustomFoodItem[];
+}
+
+/** Times are local "HH:MM" strings; null means that reminder is off. */
+export interface Reminders {
+  enabled: boolean;
+  breakfast: string | null;
+  lunch: string | null;
+  dinner: string | null;
+  workout: string | null;
+  weighIn: string | null;
+  water: boolean;
 }

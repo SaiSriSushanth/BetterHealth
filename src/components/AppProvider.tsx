@@ -1,6 +1,6 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { FoodLog, Profile, Targets, WorkoutLog } from "@/lib/types";
+import type { CustomFood, FoodLog, Profile, Targets, WeightLog, WorkoutLog } from "@/lib/types";
 import type { Repo } from "@/lib/repo/types";
 import { localDay } from "@/lib/repo/types";
 import { clearLocal, localRepo, readLocalSnapshot } from "@/lib/repo/local";
@@ -18,11 +18,24 @@ interface Ctx {
   targets: Targets | null;
   food: FoodLog[];
   workouts: WorkoutLog[];
+  weights: WeightLog[];
+  customFoods: CustomFood[];
   error: string | null;
   saveProfile(p: Profile): Promise<void>;
-  addFood(f: Omit<FoodLog, "id" | "day">): Promise<void>;
+  addFood(f: Omit<FoodLog, "id" | "day"> & { day?: string }): Promise<void>;
+  updateFood(id: string, patch: Partial<Omit<FoodLog, "id" | "day">>): Promise<void>;
   deleteFood(id: string): Promise<void>;
-  addWorkout(w: Omit<WorkoutLog, "id" | "day">): Promise<void>;
+  addWorkout(w: Omit<WorkoutLog, "id" | "day"> & { day?: string }): Promise<void>;
+  updateWorkout(id: string, patch: Partial<Omit<WorkoutLog, "id">>): Promise<void>;
+  deleteWorkout(id: string): Promise<void>;
+  /** one entry per day; kg is always stored in kilograms */
+  setWeight(kg: number, day?: string): Promise<void>;
+  deleteWeight(id: string): Promise<void>;
+  addCustomFood(f: Omit<CustomFood, "id">): Promise<void>;
+  updateCustomFood(id: string, patch: Partial<Omit<CustomFood, "id">>): Promise<void>;
+  deleteCustomFood(id: string): Promise<void>;
+  /** Permanently removes all of this user's data from the current store (device or account). */
+  deleteAllData(): Promise<void>;
   importLocal(): Promise<void>;
   signOut(): Promise<void>;
 }
@@ -42,6 +55,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [food, setFood] = useState<FoodLog[]>([]);
   const [workouts, setWorkouts] = useState<WorkoutLog[]>([]);
+  const [weights, setWeights] = useState<WeightLog[]>([]);
+  const [customFoods, setCustomFoods] = useState<CustomFood[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [canImport, setCanImport] = useState(false);
   const [authDone, setAuthDone] = useState(() => !getSupabaseBrowser());
@@ -72,9 +87,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const load = useCallback(async () => {
     const mine = ++loadId.current;
     try {
-      const [p, f, w] = await Promise.all([repo.getProfile(), repo.listFood(), repo.listWorkouts()]);
+      const [p, f, w, wt, cf] = await Promise.all([
+        repo.getProfile(), repo.listFood(), repo.listWorkouts(), repo.listWeights(), repo.listCustomFoods(),
+      ]);
       if (mine !== loadId.current) return;
-      setProfile(p); setFood(f); setWorkouts(w); setError(null);
+      setProfile(p); setFood(f); setWorkouts(w); setWeights(wt); setCustomFoods(cf); setError(null);
       if (repo.kind === "cloud") {
         const snap = readLocalSnapshot();
         setCanImport(Boolean(snap.profile || snap.food.length || snap.workouts.length) && !p);
@@ -88,26 +105,59 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { if (authDone) void load(); }, [load, authDone]);
 
+  const sortWeights = (a: WeightLog[]) => [...a].sort((x, y) => x.day.localeCompare(y.day));
+
   const value: Ctx = {
     ready, today, email, cloud: repo.kind === "cloud", canImport, profile, error,
     targets: profile ? computeTargets(profile) : null,
-    food, workouts,
+    food, workouts, weights, customFoods,
     async saveProfile(p) { await repo.saveProfile(p); setProfile(p); },
-    async addFood(f) { const row = await repo.addFood({ ...f, day: today }); setFood((x) => [...x, row]); },
+    async addFood(f) { const row = await repo.addFood({ ...f, day: f.day ?? today }); setFood((x) => [...x, row]); },
+    async updateFood(id, patch) { const row = await repo.updateFood(id, patch); setFood((x) => x.map((r) => (r.id === id ? row : r))); },
     async deleteFood(id) { await repo.deleteFood(id); setFood((x) => x.filter((r) => r.id !== id)); },
-    async addWorkout(w) { const row = await repo.addWorkout({ ...w, day: today }); setWorkouts((x) => [...x, row]); },
+    async addWorkout(w) { const row = await repo.addWorkout({ ...w, day: w.day ?? today }); setWorkouts((x) => [...x, row]); },
+    async updateWorkout(id, patch) { const row = await repo.updateWorkout(id, patch); setWorkouts((x) => x.map((r) => (r.id === id ? row : r))); },
+    async deleteWorkout(id) { await repo.deleteWorkout(id); setWorkouts((x) => x.filter((r) => r.id !== id)); },
+    async setWeight(kg, day) {
+      const row = await repo.setWeight(day ?? today, kg);
+      setWeights((x) => sortWeights([...x.filter((r) => r.day !== row.day), row]));
+    },
+    async deleteWeight(id) { await repo.deleteWeight(id); setWeights((x) => x.filter((r) => r.id !== id)); },
+    async addCustomFood(f) { const row = await repo.addCustomFood(f); setCustomFoods((x) => [...x, row]); },
+    async updateCustomFood(id, patch) { const row = await repo.updateCustomFood(id, patch); setCustomFoods((x) => x.map((r) => (r.id === id ? row : r))); },
+    async deleteCustomFood(id) { await repo.deleteCustomFood(id); setCustomFoods((x) => x.filter((r) => r.id !== id)); },
+    async deleteAllData() {
+      for (const r of food) await repo.deleteFood(r.id);
+      for (const r of workouts) await repo.deleteWorkout(r.id);
+      for (const r of weights) await repo.deleteWeight(r.id);
+      for (const r of customFoods) await repo.deleteCustomFood(r.id);
+      if (repo.kind === "local") clearLocal();
+      else {
+        const sb = getSupabaseBrowser();
+        if (sb && userId) await sb.from("profiles").delete().eq("id", userId);
+      }
+      setProfile(null); setFood([]); setWorkouts([]); setWeights([]); setCustomFoods([]);
+    },
     async importLocal() {
       if (importing.current) return;
       importing.current = true;
-      const snap = readLocalSnapshot();
-      if (snap.profile) await repo.saveProfile(snap.profile);
-      for (const { id: _f, ...f } of snap.food) await repo.addFood(f);
-      for (const { id: _w, ...w } of snap.workouts) await repo.addWorkout(w);
-      clearLocal();
-      importing.current = false;
+      try {
+        const snap = readLocalSnapshot();
+        if (snap.profile) await repo.saveProfile(snap.profile);
+        for (const f of snap.food) { const { id, ...rest } = f; void id; await repo.addFood(rest); }
+        for (const w of snap.workouts) { const { id, ...rest } = w; void id; await repo.addWorkout(rest); }
+        for (const w of snap.weights) await repo.setWeight(w.day, w.kg);
+        for (const c of snap.customFoods) { const { id, ...rest } = c; void id; await repo.addCustomFood(rest); }
+        clearLocal();
+      } finally {
+        importing.current = false;
+      }
       await load();
     },
-    async signOut() { await getSupabaseBrowser()?.auth.signOut(); setProfile(null); setFood([]); setWorkouts([]); },
+    async signOut() {
+      await getSupabaseBrowser()?.auth.signOut();
+      setProfile(null); setFood([]); setWorkouts([]); setWeights([]); setCustomFoods([]);
+    },
   };
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;
 }
