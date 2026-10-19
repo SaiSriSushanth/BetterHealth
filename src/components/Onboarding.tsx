@@ -3,32 +3,10 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useApp } from "./AppProvider";
 import { CountUp, burst, useReducedMotion } from "@/components/fx";
-import { computeTargets, cmToFtIn, ftInToCm, kgToLb, lbToKg, validateProfile } from "@/lib/goals";
-import type { Activity, Equipment, Goal, Profile, Sex, Targets } from "@/lib/types";
-
-const GOALS: { v: Goal; label: string; sub: string; bg: string }[] = [
-  { v: "lose", label: "Lose fat", sub: "Gentle deficit, high protein", bg: "bg-tangerine" },
-  { v: "maintain", label: "Stay steady", sub: "Hold your weight, build habits", bg: "bg-teal" },
-  { v: "gain", label: "Build muscle", sub: "Small surplus, lots of lifting", bg: "bg-sun" },
-];
-const ACTS: { v: Activity; label: string; sub: string }[] = [
-  { v: "sedentary", label: "Mostly sitting", sub: "Desk or couch most days" },
-  { v: "light", label: "Light", sub: "1-3 workouts a week" },
-  { v: "moderate", label: "Moderate", sub: "3-5 workouts a week" },
-  { v: "high", label: "High", sub: "6+ workouts a week" },
-];
-const EQUIP: Equipment[] = ["bodyweight", "dumbbell", "barbell", "cable", "machine", "band"];
-
-const spring = { type: "spring", stiffness: 340, damping: 26 } as const;
-
-function Check() {
-  return (
-    <svg aria-hidden viewBox="0 0 24 24" className="size-7 shrink-0">
-      <circle cx="12" cy="12" r="11" fill="#fff" stroke="#0b1f1d" strokeWidth="2" />
-      <path d="M7 12.5l3.5 3.5L17 9" fill="none" stroke="#0b1f1d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
+import { computeTargets, validateProfile } from "@/lib/goals";
+import type { Profile, Targets } from "@/lib/types";
+import { ONBOARDING_DEFAULTS, buildProfile, switchUnits, type DraftFields } from "./profile/draft";
+import { ActivityPicker, BodyNumbers, EquipmentPicker, GoalPicker, NameField, SexPicker, UnitsToggle, spring } from "./profile/fields";
 
 function Steps({ step }: { step: 0 | 1 }) {
   return (
@@ -89,39 +67,13 @@ export function Onboarding() {
   const { saveProfile } = useApp();
   const reduce = useReducedMotion();
   const [step, setStep] = useState<0 | 1>(0);
-  const [imperial, setImperial] = useState(false);
-  const [name, setName] = useState("");
-  const [sex, setSex] = useState<Sex>("female");
-  const [age, setAge] = useState("28");
-  const [cm, setCm] = useState("170");
-  const [ft, setFt] = useState("5");
-  const [inch, setInch] = useState("7");
-  const [wt, setWt] = useState("68");
-  const [goal, setGoal] = useState<Goal>("maintain");
-  const [activity, setActivity] = useState<Activity>("light");
-  const [equipment, setEquipment] = useState<Equipment[]>(["bodyweight", "dumbbell"]);
+  const [f, setF] = useState<DraftFields>(ONBOARDING_DEFAULTS);
+  const set = (patch: Partial<DraftFields>) => setF((x) => ({ ...x, ...patch }));
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  function build(): Profile {
-    return {
-      name: name.trim() || "friend", sex, age: Number(age),
-      heightCm: imperial ? ftInToCm(Number(ft), Number(inch)) : Number(cm),
-      weightKg: imperial ? lbToKg(Number(wt)) : Number(wt),
-      goal, activity, equipment: equipment.length ? equipment : ["bodyweight"],
-      units: imperial ? "imperial" : "metric",
-    };
-  }
-  function toggleUnits(next: boolean) {
-    if (next === imperial) return;
-    const p = build();
-    if (next) {
-      const f = cmToFtIn(p.heightCm); setFt(String(f.ft)); setInch(String(f.inch)); setWt(String(Math.round(kgToLb(p.weightKg))));
-    } else {
-      setCm(String(Math.round(p.heightCm))); setWt(String(Math.round(p.weightKg)));
-    }
-    setImperial(next);
-  }
+  const build = (): Profile => buildProfile(f);
+  const toggleUnits = (next: boolean) => setF((x) => switchUnits(x, next));
   function next() {
     const p = build();
     const bad = validateProfile(p);
@@ -152,76 +104,15 @@ export function Onboarding() {
           </div>
 
           <div className="card grid min-w-0 gap-6 p-5 md:p-8">
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Units">
-              <button className="chip !normal-case" aria-pressed={!imperial} onClick={() => toggleUnits(false)}>kg and cm</button>
-              <button className="chip !normal-case" aria-pressed={imperial} onClick={() => toggleUnits(true)}>lb and ft</button>
-            </div>
-            <div><label className="lbl" htmlFor="name">First name</label><input id="name" className="field !min-h-[60px] !text-xl" value={name} onChange={(e) => setName(e.target.value)} autoComplete="given-name" /></div>
-            <fieldset className="min-w-0">
-              <legend className="mb-1.5 text-[.9rem] font-bold">Sex used for the formula</legend>
-              <div className="flex flex-wrap gap-2">
-                {(["female", "male", "other"] as Sex[]).map((s) => (
-                  <motion.button key={s} aria-pressed={sex === s} className="chip !normal-case" onClick={() => setSex(s)} whileTap={reduce ? undefined : { scale: 0.9 }}>{s === "other" ? "Prefer not to say" : s[0].toUpperCase() + s.slice(1)}</motion.button>
-                ))}
-              </div>
-            </fieldset>
-            <div className="grid min-w-0 grid-cols-2 gap-4 md:grid-cols-3">
-              <div className="min-w-0"><label className="lbl" htmlFor="age">Age</label><input id="age" className="field" inputMode="numeric" value={age} onChange={(e) => setAge(e.target.value)} /></div>
-              {imperial ? (
-                <>
-                  <div className="min-w-0"><label className="lbl" htmlFor="ft">Height (ft)</label><input id="ft" className="field" inputMode="numeric" value={ft} onChange={(e) => setFt(e.target.value)} /></div>
-                  <div className="min-w-0"><label className="lbl" htmlFor="in">Height (in)</label><input id="in" className="field" inputMode="numeric" value={inch} onChange={(e) => setInch(e.target.value)} /></div>
-                </>
-              ) : (
-                <div className="min-w-0"><label className="lbl" htmlFor="cm">Height (cm)</label><input id="cm" className="field" inputMode="numeric" value={cm} onChange={(e) => setCm(e.target.value)} /></div>
-              )}
-              <div className="min-w-0"><label className="lbl" htmlFor="wt">Weight ({imperial ? "lb" : "kg"})</label><input id="wt" className="field" inputMode="decimal" value={wt} onChange={(e) => setWt(e.target.value)} /></div>
-            </div>
+            <UnitsToggle imperial={f.imperial} onChange={toggleUnits} />
+            <NameField f={f} set={set} />
+            <SexPicker f={f} set={set} />
+            <BodyNumbers f={f} set={set} />
           </div>
 
-          <fieldset className="min-w-0">
-            <legend className="mb-3 font-display text-3xl font-extrabold tracking-tight">What are you after?</legend>
-            <div className="grid min-w-0 gap-3 md:grid-cols-3">
-              {GOALS.map((g) => {
-                const on = goal === g.v;
-                return (
-                  <motion.button key={g.v} aria-pressed={on} onClick={() => setGoal(g.v)} whileTap={reduce ? undefined : { scale: 0.96 }}
-                    animate={reduce ? undefined : { y: on ? -6 : 0, rotate: on ? -1 : 0 }} transition={spring}
-                    className={`relative min-h-28 min-w-0 rounded-[28px] border-2 border-ink p-5 text-left text-ink ${on ? g.bg + " shadow-[6px_6px_0_var(--ink)]" : "bg-surface hover:bg-bg"}`}>
-                    <span className="flex items-start justify-between gap-2"><b className="font-display text-2xl font-extrabold">{g.label}</b>{on && <Check />}</span>
-                    <span className="mt-1 block font-medium">{g.sub}</span>
-                  </motion.button>
-                );
-              })}
-            </div>
-          </fieldset>
-
-          <fieldset className="min-w-0">
-            <legend className="mb-3 font-display text-3xl font-extrabold tracking-tight">How active are you?</legend>
-            <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
-              {ACTS.map((a) => {
-                const on = activity === a.v;
-                return (
-                  <motion.button key={a.v} aria-pressed={on} onClick={() => setActivity(a.v)} whileTap={reduce ? undefined : { scale: 0.96 }}
-                    animate={reduce ? undefined : { y: on ? -4 : 0 }} transition={spring}
-                    className={`flex min-h-[72px] min-w-0 items-center justify-between gap-3 rounded-3xl border-2 border-ink p-4 text-left text-ink ${on ? "bg-bubble shadow-[5px_5px_0_var(--ink)]" : "bg-surface hover:bg-bg"}`}>
-                    <span className="min-w-0"><b className="block text-lg">{a.label}</b><span className="font-medium">{a.sub}</span></span>
-                    {on && <Check />}
-                  </motion.button>
-                );
-              })}
-            </div>
-          </fieldset>
-
-          <fieldset className="min-w-0">
-            <legend className="mb-3 font-display text-3xl font-extrabold tracking-tight">Equipment you can use</legend>
-            <div className="flex flex-wrap gap-2">
-              {EQUIP.map((e) => (
-                <motion.button key={e} className="chip !min-h-[48px] !px-5" aria-pressed={equipment.includes(e)} whileTap={reduce ? undefined : { scale: 0.88 }}
-                  onClick={() => setEquipment((x) => (x.includes(e) ? x.filter((y) => y !== e) : [...x, e]))}>{e}</motion.button>
-              ))}
-            </div>
-          </fieldset>
+          <GoalPicker f={f} set={set} />
+          <ActivityPicker f={f} set={set} />
+          <EquipmentPicker f={f} set={set} />
 
           {err && <p role="alert" className="rounded-2xl bg-bubble px-4 py-2 font-bold">{err}</p>}
           <div><motion.button className="btn hot !min-h-[64px] !px-10 !text-xl" onClick={next} whileTap={reduce ? undefined : { scale: 0.94 }}>Show my plate</motion.button></div>

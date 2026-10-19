@@ -3,6 +3,7 @@ import { Bricolage_Grotesque, Albert_Sans } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/components/AppProvider";
 import { Nav } from "@/components/Nav";
+import { ReminderRunner } from "@/components/ReminderRunner";
 
 const display = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-display", display: "swap", axes: ["opsz", "wdth"] });
 const body = Albert_Sans({ subsets: ["latin"], variable: "--font-body", display: "swap" });
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </p>
             </div>
           </main>
+          <ReminderRunner />
         </AppProvider>
       </body>
     </html>
