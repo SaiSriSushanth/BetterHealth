@@ -1,0 +1,7 @@
+# Experimental real-anatomy body (not used). Keep out of deployments.
+src/app/scratch-anatomy
+src/app/credits
+src/components/three/BodyViewerAnatomy.tsx
+public/models
+scripts
+docs/ANATOMY_PIPELINE.md

@@ -13,7 +13,7 @@ import {
 } from "react";
 import * as THREE from "three";
 import { MUSCLE_BY_ID } from "@/lib/exercises";
-import { loadBody, type BodyData } from "./bodySdf";
+import { loadBody, SOFT_ZONES, type BodyData } from "./bodySdf";
 import { SKIN, ZONE_COUNT, ZONES } from "./zones";
 
 type Controls = ComponentRef<typeof OrbitControls>;
@@ -48,6 +48,7 @@ interface ZoneUniforms {
   uLift: THREE.IUniform<Float32Array>;
   uSel: THREE.IUniform<number>;
   uPulse: THREE.IUniform<number>;
+  uSoft: THREE.IUniform<Float32Array>;
 }
 
 const N = ZONE_COUNT;
@@ -67,6 +68,8 @@ uniform vec3 uColor[${N}];
 uniform float uGlow[${N}];
 uniform float uLift[${N}];
 uniform float uSel;
+uniform float uSoft[${N}];
+varying float vSoft;
 varying vec3 vZoneColor;
 varying float vGlow;
 varying vec2 vLine;
@@ -88,6 +91,7 @@ vSelW = mix(sA, sB, zM);
 vSelEdge = max(sA, sB);
 vLine = aLine;
 vAO = aAO;
+vSoft = max(uSoft[zA], uSoft[zB]);
 transformed += objectNormal * mix(uLift[zA], uLift[zB], zM);`,
       );
     shader.fragmentShader = shader.fragmentShader
@@ -95,6 +99,7 @@ transformed += objectNormal * mix(uLift[zA], uLift[zB], zM);`,
         "#include <common>",
         `#include <common>
 uniform float uPulse;
+varying float vSoft;
 varying vec3 vZoneColor;
 varying float vGlow;
 varying vec2 vLine;
@@ -104,7 +109,9 @@ varying float vSelEdge;`,
       )
       .replace(
         "vec4 diffuseColor = vec4( diffuse, opacity );",
-        `float groove = 1.0 - smoothstep(0.0, 0.0065, vLine.x);
+        `// soft zones (traps) get a wide, faint border: no groove line, no plate edge
+float edge = 1.0 - smoothstep(0.0, mix(0.0065, 0.016, vSoft), vLine.x);
+float groove = edge * (1.0 - vSoft);
 float detail = 1.0 - smoothstep(0.0, 0.0045, vLine.y);
 vec3 baseCol = vZoneColor * (1.0 - 0.34 * groove) * (1.0 - 0.18 * detail);
 baseCol *= mix(0.56, 1.0, vAO);
@@ -112,7 +119,7 @@ vec4 diffuseColor = vec4( baseCol, opacity );`,
       )
       .replace(
         "vec3 totalEmissiveRadiance = emissive;",
-        `vec3 totalEmissiveRadiance = vZoneColor * vGlow + vec3(1.0, 0.97, 0.92) * groove * vSelEdge * (0.35 + 0.45 * uPulse);`,
+        `vec3 totalEmissiveRadiance = vZoneColor * vGlow + vec3(1.0, 0.97, 0.92) * edge * (1.0 - 0.55 * vSoft) * vSelEdge * (0.35 + 0.45 * uPulse);`,
       )
       .replace(
         "#include <opaque_fragment>",
@@ -195,6 +202,7 @@ function Body({
       uLift: { value: new Float32Array(N) },
       uSel: { value: -1 },
       uPulse: { value: 0 },
+      uSoft: { value: Float32Array.from({ length: N }, (_, z) => (SOFT_ZONES.has(z) ? 1 : 0)) },
     };
   }, []);
   const material = useMemo(() => makeBodyMaterial(uniforms), [uniforms]);

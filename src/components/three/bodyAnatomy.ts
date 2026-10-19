@@ -176,15 +176,15 @@ export function buildAnatomy(): Anatomy {
   ell("skin", [0, 1.325, -0.014], [0.128, 0.18, 0.11], [-10, 0, 0], { k: 0.06, bias: DEEP });
   ell("skin", [0, 1.12, 0.012], [0.106, 0.14, 0.088], [0, 0, 0], { k: 0.07, bias: DEEP });
   ell("skin", [0, 0.97, -0.014], [0.138, 0.092, 0.102], [0, 0, 0], { k: 0.06, bias: DEEP });
-  cone("traps", [0, 1.45, -0.016], [0.162, 1.458, -0.024], 0.058, 0.044, { k: 0.05, bias: 0.012 });
+  cone("traps", [0.02, 1.445, -0.018], [0.162, 1.458, -0.024], 0.048, 0.044, { k: 0.05, bias: 0.012 });
   ell("skin", [0, 0.882, 0.008], [0.042, 0.038, 0.05], [0, 0, 0], { k: 0.04, bias: DEEP });
   // clavicle
   cone("skin", [0.024, 1.48, 0.05], [0.16, 1.486, 0.004], 0.0095, 0.009, { k: 0.03, bias: 0.012 });
 
   // ---- neck & head: short athletic neck, soft SCM ----
-  cone("neck", [0, 1.485, -0.012], [0, 1.6, -0.008], 0.048, 0.041, { k: 0.045, part: 1 });
-  ell("neck", [0, 1.556, 0.016], [0.04, 0.04, 0.034], [0, 0, 0], { k: 0.04, part: 1 }); // throat: no hollow under the chin
-  cone("neck", [0.044, 1.598, -0.016], [0.017, 1.497, 0.042], 0.015, 0.013, { k: 0.03, part: 2 });
+  cone("neck", [0, 1.485, -0.012], [0, 1.6, -0.008], 0.042, 0.036, { k: 0.04, part: 1 });
+  ell("neck", [0, 1.556, 0.014], [0.034, 0.038, 0.03], [0, 0, 0], { k: 0.04, part: 1 }); // throat: no hollow under the chin
+  cone("neck", [0.04, 1.598, -0.016], [0.016, 1.497, 0.038], 0.013, 0.011, { k: 0.028, part: 2 });
   ell("skin", [0, 1.705 + HY, -0.006], [0.076, 0.1, 0.095], [0, 0, 0], { k: 0.04 });
   ell("skin", [0, 1.635 + HY, 0.026], [0.059, 0.058, 0.072], [15, 0, 0], { k: 0.04 });
   ell("skin", [0, 1.593 + HY, 0.066], [0.026, 0.02, 0.022], [0, 0, 0], { k: 0.02 });
@@ -193,11 +193,17 @@ export function buildAnatomy(): Anatomy {
   ell("skin", [0.042, 1.66 + HY, 0.066], [0.022, 0.016, 0.018], [0, 0, 0], { k: 0.02 });
   ell("skin", [0.077, 1.672 + HY, -0.008], [0.011, 0.029, 0.019], [0, 0, 0], { k: 0.01 });
 
-  // ---- traps: yoke rising up the neck + raised diamond down the spine ----
-  ell("traps", [0.075, 1.515, -0.036], [0.1, 0.042, 0.056], [0, 0, -26], { k: 0.03 });
-  cone("traps", [0.02, 1.585, -0.036], [0.13, 1.497, -0.026], 0.026, 0.024, { k: 0.035 });
-  ell("traps", [0, 1.4, -0.098], [0.13, 0.085, 0.012], [0, 0, 0], { k: 0.045 });
-  ell("traps", [0.026, 1.272, -0.102], [0.04, 0.1, 0.012], [0, 0, 14], { k: 0.045 });
+  // ---- traps: soft slope from the skull to the shoulder tips + diamond fading down the spine ----
+  // upper trap: thin beside the neck, sweeping down and out to the shoulder tip
+  cone("traps", [0.026, 1.6, -0.036], [0.165, 1.472, -0.022], 0.017, 0.028, { k: 0.04 });
+  ell("traps", [0.085, 1.488, -0.05], [0.08, 0.03, 0.04], [0, 0, -24], { k: 0.045 });
+  // middle/lower trap: a thin sheet from the scapula spine to T12 (mirrored = diamond), fading into the back
+  limb("traps", [0.12, 1.44, -0.088], [0.012, 1.19, -0.104], 0, 1, 0.045, 0.01, 0, 0, { k: 0.045 }, [0.3, 0, -0.95]);
+  ell("traps", [0, 1.455, -0.086], [0.065, 0.06, 0.009], [0, 0, 0], { k: 0.05 });
+  // colour-only diamond: the trap sheet is kept thin for a smooth back, so its zone is painted
+  limb("traps", [0.13, 1.45, -0.088], [0.008, 1.18, -0.104], 0, 1, 0.05, 0.05, 0, 0, { op: "paint" }, [0.3, 0, -0.95]);
+  ell("traps", [0, 1.45, -0.09], [0.07, 0.07, 0.05], [0, 0, 0], { op: "paint" });
+  ell("traps", [0, 1.32, -0.1], [0.03, 0.13, 0.05], [0, 0, 0], { op: "paint" });
   // back of the neck reads as upper traps
   ell("traps", [0, 1.545, -0.048], [0.052, 0.07, 0.03], [0, 0, 0], { op: "paint" });
 

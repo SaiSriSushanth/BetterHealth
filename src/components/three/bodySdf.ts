@@ -13,7 +13,7 @@
  * The build is a generator so it can be time-sliced and never blocks a frame.
  */
 import { buildAnatomy, type Anatomy, type Refine } from "./bodyAnatomy";
-import { SKIN, ZONE_COUNT } from "./zones";
+import { SKIN, ZONE_COUNT, ZONES } from "./zones";
 
 export interface BodyData {
   position: Float32Array;
@@ -40,6 +40,9 @@ const B = 4; // block size (cells) for primitive culling
 const BAND = 0.03; // primitives this close to a block are evaluated for it
 const BIG = 1;
 const BLEND = 0.01; // zone colour blend width
+const BLEND_SOFT = 0.03; // wider blend around zones that should flow (no plate edges)
+/** zones whose borders blend softly and get no groove line (the traps sheet) */
+export const SOFT_ZONES: ReadonlySet<number> = new Set([ZONES.indexOf("traps")]);
 
 const X_MAX = 0.56;
 const Y0 = -0.02;
@@ -548,7 +551,7 @@ export function* buildBody(): Generator<undefined, BodyData, undefined> {
     const [z1, z2, groove, detail] = classify(x, y, z);
     zone[v * 3] = z1;
     zone[v * 3 + 1] = z2;
-    zone[v * 3 + 2] = 0.5 * (1 - smooth01(BLEND, groove));
+    zone[v * 3 + 2] = 0.5 * (1 - smooth01(SOFT_ZONES.has(z1) || SOFT_ZONES.has(z2) ? BLEND_SOFT : BLEND, groove));
     line[v * 2] = groove;
     line[v * 2 + 1] = detail;
     if ((v & 2047) === 2047) yield;
