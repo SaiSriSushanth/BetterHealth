@@ -4,6 +4,7 @@ import "./globals.css";
 import { AppProvider } from "@/components/AppProvider";
 import { Nav } from "@/components/Nav";
 import { ReminderRunner } from "@/components/ReminderRunner";
+import { PwaRegister } from "@/components/PwaRegister";
 
 const display = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-display", display: "swap", axes: ["opsz", "wdth"] });
 const body = Albert_Sans({ subsets: ["latin"], variable: "--font-body", display: "swap" });
@@ -11,6 +12,9 @@ const body = Albert_Sans({ subsets: ["latin"], variable: "--font-body", display:
 export const metadata: Metadata = {
   title: "BetterHealth",
   description: "Train every muscle, log what you eat, and get a coach that reads your day.",
+  applicationName: "BetterHealth",
+  appleWebApp: { capable: true, title: "BetterHealth", statusBarStyle: "default" },
+  formatDetection: { telephone: false },
 };
 export const viewport: Viewport = { themeColor: "#F3F7F5", viewportFit: "cover" };
 
@@ -30,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </main>
           <ReminderRunner />
+          <PwaRegister />
         </AppProvider>
       </body>
     </html>
