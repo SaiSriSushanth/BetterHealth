@@ -41,7 +41,11 @@ function draftNote(d: Draft) {
   const conf = d.confidence ? ` (${d.confidence} confidence)` : "";
   switch (d.source) {
     case "ai": return `Estimated by AI${conf}. Edit the grams if it looks off.`;
-    case "photo": return `Estimated from your photo${conf}. Edit the grams if it looks off.`;
+    case "photo": {
+      const refs = new Set(d.items.map((i) => (i as { ref?: { source: string } }).ref?.source).filter(Boolean));
+      const grounded = refs.size ? " Nutrients come from food composition data (IFCT or USDA) where we found a match." : "";
+      return `Portions estimated from your photo${conf}.${grounded} Edit the grams if it looks off.`;
+    }
     case "barcode": return "From the barcode label. Edit the grams to match how much you had.";
     default: return "From our food list. Edit the grams to match your portion.";
   }

@@ -1,0 +1,49 @@
+| Food | g | Old kcal | New kcal | Δ | Old P/C/F | New P/C/F | Grounded in |
+|---|---:|---:|---:|---:|---|---|---|
+| upma | 300 | 570 | 360 | -37% | 12/90/18 | 9/54/13.5 | table: upma |
+| coconut chutney | 30 | 60 | 80 | 33% | 1/5/5 | 1.1/2.5/7.5 | web: Coconut chutney |
+| idli (4 pieces) | 200 | 440 | 240 | -45% | 12/88/2 | 8/50/0.8 | table: idli |
+| french fries | 110 | 330 | 343 | 4% | 3/50/15 | 3.7/45.1/16.5 | table: french fries |
+| watermelon juice | 240 | 60 | 72 | 20% | 1/15/0 | 1.5/18.1/0.4 | usda: Watermelon juice, 100% |
+| plain dosa | 120 | 300 | 202 | -33% | 8/50/10 | 4.7/34.8/4.4 | table: dosa |
+| masala dosa with potato filling | 200 | 400 | 336 | -16% | 8/70/10 | 7.8/58/7.4 | table: dosa |
+| sambar | 200 | 250 | 100 | -60% | 10/35/10 | 5/15/2.4 | table: sambar |
+| poha | 200 | 400 | 260 | -35% | 8/80/10 | 5/50/5 | table: poha |
+| roti | 40 | 120 | 119 | -1% | 3/25/1 | 3.8/18.4/3 | table: roti |
+| aloo paratha | 100 | 350 | 326 | -7% | 7/60/10 | 7.5/44/13 | table: paratha |
+| dal tadka | 200 | 400 | 232 | -42% | 20/60/15 | 14/32/5 | table: dal, cooked |
+| rajma curry | 200 | 400 | 176 | -56% | 20/60/10 | 9.2/24.8/4.4 | web: Rajma curry |
+| chole | 200 | 400 | 260 | -35% | 20/60/15 | 12/34/9 | table: chole |
+| paneer butter masala | 200 | 680 | 482 | -29% | 30/40/50 | 20.6/16.2/37.1 | recipe: Paneer + Butter, NFS + Cream, light + Tomato, ripe, local |
+| chicken biryani | 300 | 600 | 510 | -15% | 30/80/20 | 24/66/16.5 | table: chicken biryani |
+| vegetable pulao | 250 | 400 | 388 | -3% | 8/70/15 | 8.4/61.3/11.7 | recipe: Rice, raw, brown + Vegetables, mixed, frozen, unprepared + Onions, raw + Oil, oat |
+| curd rice | 250 | 350 | 300 | -14% | 10/50/10 | 7.5/45/10 | table: curd rice |
+| steamed white rice | 150 | 195 | 227 | 16% | 4.2/42.2/0.4 | 4.8/50.8/0.4 | usda: Rice, white, steamed, Chinese restaurant |
+| aloo gobi | 150 | 210 | 135 | -36% | 4/30/10 | 3/16.5/6.8 | table: aloo gobi |
+| palak paneer | 200 | 400 | 300 | -25% | 20/30/25 | 14/10/24 | table: palak paneer |
+| butter chicken | 200 | 600 | 300 | -50% | 35/20/40 | 26/10/18 | table: chicken curry |
+| samosa | 100 | 300 | 262 | -13% | 6/40/15 | 5/28/14 | table: samosa |
+| pav bhaji | 250 | 450 | 284 | -37% | 10/60/20 | 4.8/28.1/17.1 | recipe: Potatoes, canned, drained solids + Vegetables, mixed, frozen, unprepared + Onions, raw + Tomatoes, raw |
+| vada pav | 150 | 400 | 373 | -7% | 8/60/18 | 7.2/48.4/17.2 | recipe: Potato, NFS + Bread, roll, Mexican, bollilo + Oil, oat |
+| gulab jamun | 50 | 150 | 168 | 12% | 2/30/5 | 2.5/26/6 | table: gulab jamun |
+| jalebi | 50 | 150 | 198 | 32% | 1/35/5 | 1/35/6 | table: jalebi |
+| masala chai | 150 | 90 | 83 | -8% | 2/15/3 | 2.3/12.8/2.6 | table: tea with milk and sugar |
+| sweet lassi | 250 | 200 | 168 | -16% | 6/30/6 | 6.3/27.5/3.8 | table: lassi, sweet |
+| ragi mudde | 200 | 220 | 230 | 5% | 6/45/1 | 6/48/1.6 | web: Ragi mudde |
+| bajra roti | 50 | 150 | 111 | -26% | 4/30/1 | 3.6/20.1/1.8 | web: Bajra roti |
+| banana | 120 | 105 | 107 | 2% | 1.3/27/0.3 | 1.3/27.4/0.4 | table: banana |
+| mango | 200 | 120 | 120 | 0% | 1.5/30/0.5 | 1.6/29/0.8 | table: mango |
+| boiled egg | 50 | 77 | 78 | 1% | 6.3/0.6/5.3 | 6.3/0.6/5.3 | table: egg, boiled |
+| masala omelette | 100 | 180 | 160 | -11% | 12/10/12 | 10.4/2.5/12.1 | recipe: Egg, poultry, omelet + Onion, big + Tomato, ripe, local + Chillies, green, variety 4 |
+| oats porridge with milk | 250 | 370 | 277 | -25% | 12/60/10 | 9.9/40/8.7 | recipe: Oats, raw + Milk, NFS + Sugar, NFS + Butter, NFS |
+| pasta with tomato sauce | 250 | 400 | 392 | -2% | 12/70/10 | 9.4/56.3/14.2 | recipe: Pasta, dry, enriched + Tomato sauce, canned, no salt added + Olive oil + Sugar, NFS |
+| cheeseburger | 150 | 400 | 443 | 11% | 25/30/20 | 25.5/45/21 | table: cheeseburger |
+| pizza slice | 110 | 280 | 293 | 5% | 12/36/10 | 12.1/36.3/11 | table: pizza slice |
+| sushi roll | 150 | 300 | 210 | -30% | 15/45/5 | 6.8/40.5/1.5 | table: sushi roll |
+| grilled chicken breast | 120 | 198 | 198 | 0% | 37/0/4 | 37.2/0/4.3 | table: chicken breast, cooked |
+| caesar salad | 200 | 400 | 154 | -61% | 10/30/30 | 8/15/6.8 | usda: Caesar salad, with romaine, no dressing |
+| toor dal, cooked | 150 | 210 | 174 | -17% | 12/36/1 | 10.5/24/3.8 | table: dal, cooked |
+| cooked brown rice | 150 | 165 | 185 | 12% | 3.5/34.5/1.5 | 4.1/38.4/1.5 | table: cooked brown rice |
+| peanut chutney | 30 | 180 | 100 | -44% | 8/6/15 | 3.6/3.1/7.9 | recipe: Groundnut (peanut) + Coconut water + Chillies, green, variety 4 + Ginger, fresh |
+
+Foods: 45. Grounded in: table 30, web 4, usda 3, recipe 8. Old and new differ by 25% or more on 20. Model: gpt-4o-mini.
