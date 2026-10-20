@@ -12,6 +12,15 @@ type Phase =
 
 export interface PhotoEstimate { items: EstimatedItem[]; confidence?: string }
 
+/** Region hints for the server: browser language and timezone only, nothing more precise. */
+function browserLocale() {
+  try {
+    return { lang: navigator.language, tz: Intl.DateTimeFormat().resolvedOptions().timeZone };
+  } catch {
+    return {};
+  }
+}
+
 const ROUGH_NOTE = "Photo estimates are rough. Check the portions before saving.";
 
 /**
@@ -26,12 +35,14 @@ export function PhotoSheet({ file, onClose, onRetake, onResult }: {
 }) {
   const [phase, setPhase] = useState<Phase>({ state: "preparing" });
   const [image, setImage] = useState<string | null>(null);
+  const [hint, setHint] = useState("");
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!file) { setImage(null); return; }
     let cancelled = false;
     setImage(null);
+    setHint("");
     setPhase({ state: "preparing" });
     if (!file.type.startsWith("image/")) {
       setPhase({ state: "failed", message: "That file is not a photo. Choose a photo of your meal." });
@@ -53,7 +64,7 @@ export function PhotoSheet({ file, onClose, onRetake, onResult }: {
     try {
       const res = await fetch("/api/food/photo", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image }), signal: ctrl.signal,
+        body: JSON.stringify({ image, locale: browserLocale(), ...(hint.trim() ? { hint: hint.trim() } : {}) }), signal: ctrl.signal,
       });
       const data = await res.json().catch(() => null) as { items?: EstimatedItem[]; confidence?: string; error?: string } | null;
       if (res.ok && data?.items?.length) { onResult({ items: data.items, confidence: data.confidence }); return; }
@@ -90,6 +101,12 @@ export function PhotoSheet({ file, onClose, onRetake, onResult }: {
           {phase.state === "failed" ? phase.message : phase.state === "sending" ? "Estimating the food in your photo." : phase.state === "preview" ? "Photo ready." : ""}
         </p>
 
+        <label className="grid gap-1.5">
+          <span className="text-sm font-bold">Anything we can&apos;t see? (optional)</span>
+          <input className="field" type="text" maxLength={140} value={hint} disabled={phase.state === "sending"}
+            onChange={(e) => setHint(e.target.value)} placeholder="e.g. cooked in 2 tsp ghee, homemade" />
+        </label>
+
         <div className="flex flex-wrap gap-2">
           {phase.state !== "failed" || image ? (
             <button type="button" className="btn hot flex-1" data-autofocus disabled={!image || phase.state === "sending"} onClick={send}>
@@ -98,7 +115,7 @@ export function PhotoSheet({ file, onClose, onRetake, onResult }: {
           ) : null}
           <button type="button" className="btn secondary flex-1" onClick={onRetake} disabled={phase.state === "sending"}>Retake</button>
         </div>
-        <p className="muted text-xs">Your photo is sent once for the estimate and is not saved. Location data is removed first.</p>
+        <p className="muted text-xs">Your photo is sent once for the estimate and is not saved. Location data is removed first. Your browser language and time zone help us pick local foods.</p>
       </div>
     </Sheet>
   );

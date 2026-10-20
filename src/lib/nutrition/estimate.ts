@@ -128,6 +128,8 @@ export interface EstimatedItem {
   portion: string;
   grams: number;
   nutrients: Nutrients;
+  /** Where the numbers came from (photo grounding). */
+  ref?: { source: string; name: string };
 }
 
 export interface Estimate {
